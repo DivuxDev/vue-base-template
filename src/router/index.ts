@@ -25,6 +25,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ProfileView.vue'),
         meta: { title: 'Mi Perfil', requiresAuth: true },
       },
+      // ── Área de administración ───────────────────────────────────────────────
+      {
+        path: 'admin/users',
+        name: 'AdminUsers',
+        component: () => import('@/views/admin/UsersAdminView.vue'),
+        meta: { title: 'Gestión de Usuarios', requiresAuth: true, requiresAdmin: true },
+      },
     ],
   },
 
@@ -81,6 +88,11 @@ router.beforeEach(async to => {
   // Ruta protegida → redirigir a login si no está autenticado
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'Login', query: { redirect: to.fullPath } }
+  }
+
+  // Ruta solo para admins → redirigir al home si no es admin
+  if (to.meta.requiresAdmin && !authStore.isAdmin) {
+    return { name: 'Home' }
   }
 
   // Ruta solo para invitados → redirigir al home si ya está logueado

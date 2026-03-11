@@ -19,6 +19,18 @@
         >
           <el-menu-item index="/">Inicio</el-menu-item>
           <el-menu-item v-if="isAuthenticated" index="/profile">Mi Perfil</el-menu-item>
+
+          <!-- Menú admin: solo visible para administradores -->
+          <el-sub-menu v-if="isAdmin" index="admin">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              Admin
+            </template>
+            <el-menu-item index="/admin/users">
+              <el-icon><UserFilled /></el-icon>
+              Gestión de Usuarios
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
 
         <!-- Acciones de usuario -->
@@ -86,6 +98,7 @@ const appName = import.meta.env.VITE_APP_NAME as string
 const currentYear = new Date().getFullYear()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isAdmin = computed(() => authStore.isAdmin)
 const activeRoute = computed(() => route.path)
 
 async function handleCommand(command: string) {

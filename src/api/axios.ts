@@ -3,12 +3,18 @@ import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axio
 
 /**
  * Instancia centralizada de Axios.
- * - Base URL leída del .env (VITE_API_BASE_URL)
+ *
+ * En DESARROLLO: baseURL vacío → las peticiones van a /api/... en el mismo
+ * origen (localhost:5173), y el proxy de Vite las reenvía a Laravel (8000).
+ * Esto evita CORS y "connection refused" desde el navegador.
+ *
+ * En PRODUCCIÓN: usa VITE_API_BASE_URL del .env (URL absoluta del backend).
+ *
  * - Interceptor que agrega el token Bearer en cada request
  * - Interceptor que maneja errores 401 (redirigir a login)
  */
 const apiClient: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000',
+  baseURL: import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL ?? ''),
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
