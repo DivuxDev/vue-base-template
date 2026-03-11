@@ -12,7 +12,7 @@
         <template v-else-if="user">
           <!-- Avatar + nombre -->
           <div class="profile-hero">
-            <el-avatar :size="90" class="profile-avatar">
+            <el-avatar :size="90" :src="user.avatar ?? undefined" class="profile-avatar">
               {{ userInitials }}
             </el-avatar>
             <h1 class="profile-name">{{ user.name }}</h1>
@@ -37,12 +37,6 @@
               </el-descriptions-item>
               <el-descriptions-item label="Correo electrónico">
                 {{ user.email }}
-              </el-descriptions-item>
-              <el-descriptions-item label="Email verificado">
-                <el-tag v-if="user.email_verified_at" type="success" size="small">
-                  Verificado
-                </el-tag>
-                <el-tag v-else type="warning" size="small">Pendiente</el-tag>
               </el-descriptions-item>
               <el-descriptions-item v-if="user.created_at" label="Miembro desde">
                 {{ formatDate(user.created_at) }}

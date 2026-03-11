@@ -27,7 +27,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
     // Proxy API calls to Laravel backend during development
     proxy: {
       '/api': {

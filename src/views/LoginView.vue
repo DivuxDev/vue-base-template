@@ -8,6 +8,18 @@
         <p class="auth-subtitle">Bienvenido de nuevo</p>
       </div>
 
+      <!-- Error OAuth Google (redirección desde /auth/callback?error=...) -->
+      <el-alert
+        v-if="oauthError"
+        title="Error al iniciar sesión con Google"
+        :description="oauthError"
+        type="error"
+        show-icon
+        :closable="true"
+        class="form-alert"
+        @close="oauthError = ''"
+      />
+
       <!-- Formulario -->
       <el-form
         ref="formRef"
@@ -42,7 +54,7 @@
         </el-form-item>
 
         <div class="form-options">
-          <el-checkbox v-model="form.remember">Recordarme</el-checkbox>
+          <span></span>
         </div>
 
         <!-- Error global -->
@@ -91,22 +103,32 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { Message, Lock, ChromeFilled } from '@element-plus/icons-vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAuth } from '@/composables/useAuth'
 import { googleRedirectUrl } from '@/api/auth'
 
+const route = useRoute()
 const authStore = useAuthStore()
 const { login } = useAuth()
 
 const formRef = ref<FormInstance>()
+const oauthError = ref('')
+
+// Leer ?error=... enviado por el backend tras un fallo en Google OAuth
+onMounted(() => {
+  const errorParam = route.query.error as string | undefined
+  if (errorParam === 'google_auth_failed') {
+    oauthError.value = 'La autenticación con Google falló. Intenta de nuevo o usa email y contraseña.'
+  }
+})
 
 const form = reactive({
   email: '',
   password: '',
-  remember: false,
 })
 
 const rules: FormRules = {
@@ -123,7 +145,7 @@ const rules: FormRules = {
 async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
-  await login({ email: form.email, password: form.password, remember: form.remember })
+  await login({ email: form.email, password: form.password })
 }
 
 /** Redirige al backend Laravel para iniciar el flujo OAuth de Google */

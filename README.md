@@ -64,38 +64,71 @@ Edita `.env`:
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-### 2. Endpoints esperados del backend
+### 2. Endpoints del backend
 
-| Método | Endpoint                    | Descripción                          |
-|--------|----------------------------|--------------------------------------|
-| POST   | `/api/login`               | Retorna `{ token, token_type, user }` |
-| POST   | `/api/register`            | Retorna `{ token, token_type, user }` |
-| POST   | `/api/logout`              | Requiere Bearer token                |
-| GET    | `/api/user`                | Retorna datos del usuario autenticado |
-| GET    | `/api/auth/google/redirect`| Inicia flujo OAuth Google            |
+| Método | Endpoint                      | Auth         | Descripción                      |
+|--------|-------------------------------|--------------|----------------------------------|
+| POST   | `/api/auth/register`          | No           | Registro (devuelve token + user) |
+| POST   | `/api/auth/login`             | No           | Login (devuelve token + user)    |
+| POST   | `/api/auth/logout`            | Bearer token | Revoca el token                  |
+| GET    | `/api/user`                   | Bearer token | Perfil del usuario               |
+| GET    | `/api/auth/google/redirect`   | No           | Inicia flujo OAuth Google        |
+| GET    | `/api/auth/google/callback`   | No           | Callback OAuth (gestionado por el navegador) |
+
+> **Usuarios de prueba (seeder):** `test@example.com` / `password`
 
 ### 3. Estructura de respuesta esperada
 
+Todas las respuestas siguen el mismo envoltorio:
+
 ```json
-// POST /api/login o /api/register
 {
-  "token": "1|eyJ...",
-  "token_type": "Bearer",
-  "user": {
-    "id": 1,
-    "name": "Juan Pérez",
-    "email": "juan@example.com",
-    "email_verified_at": "2024-01-01T00:00:00Z",
-    "created_at": "2024-01-01T00:00:00Z"
-  }
+  "success": true,
+  "data": { ... },
+  "message": "string"
+}
+```
+
+```json
+// POST /api/auth/login  |  POST /api/auth/register
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "Juan Pérez",
+      "email": "juan@example.com",
+      "avatar": null,
+      "created_at": "2026-03-11T10:00:00.000000Z"
+    },
+    "token": "1|abc123xyz..."
+  },
+  "message": "Login successful."
 }
 
 // GET /api/user
 {
-  "id": 1,
-  "name": "Juan Pérez",
-  "email": "juan@example.com"
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "Juan Pérez",
+      "email": "juan@example.com",
+      "avatar": null,
+      "created_at": "2026-03-11T10:00:00.000000Z"
+    }
+  },
+  "message": "User profile retrieved successfully."
 }
+```
+
+OAuth Google — en caso de éxito el backend redirige a:
+```
+http://localhost:3000/auth/callback?token=3|ghi789rst...
+```
+En caso de error:
+```
+http://localhost:3000/auth/callback?error=google_auth_failed
 ```
 
 ### 4. CORS en Laravel
@@ -122,16 +155,20 @@ En el controlador:
 public function login(Request $request)
 {
     if (!Auth::attempt($request->only('email', 'password'))) {
-        return response()->json(['message' => 'Credenciales incorrectas'], 401);
+        return response()->json([
+            'success' => false,
+            'data'    => null,
+            'message' => 'Invalid credentials. Please check your email and password.',
+        ], 401);
     }
 
-    $user = Auth::user();
+    $user  = Auth::user();
     $token = $user->createToken('api-token')->plainTextToken;
 
     return response()->json([
-        'token'      => $token,
-        'token_type' => 'Bearer',
-        'user'       => $user,
+        'success' => true,
+        'data'    => ['user' => $user, 'token' => $token],
+        'message' => 'Login successful.',
     ]);
 }
 ```

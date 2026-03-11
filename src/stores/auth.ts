@@ -39,10 +39,12 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await authApi.login(payload)
-      setToken(data.token)
-      user.value = data.user
-      ElMessage.success(`Bienvenido, ${data.user.name}`)
+      const { data: envelope } = await authApi.login(payload)
+      // Respuesta: { success, data: { user, token }, message }
+      if (!envelope.success || !envelope.data) throw new Error(envelope.message)
+      setToken(envelope.data.token)
+      user.value = envelope.data.user
+      ElMessage.success(`Bienvenido, ${envelope.data.user.name}`)
       return true
     } catch (err: unknown) {
       error.value = extractErrorMessage(err)
@@ -58,9 +60,10 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await authApi.register(payload)
-      setToken(data.token)
-      user.value = data.user
+      const { data: envelope } = await authApi.register(payload)
+      if (!envelope.success || !envelope.data) throw new Error(envelope.message)
+      setToken(envelope.data.token)
+      user.value = envelope.data.user
       ElMessage.success('Cuenta creada exitosamente')
       return true
     } catch (err: unknown) {
@@ -85,13 +88,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** Obtener usuario desde /api/user (usado al cargar la app si hay token) */
+  /** Obtener usuario desde GET /api/user (usado al cargar la app si hay token) */
   async function fetchUser(): Promise<void> {
     if (!token.value) return
     loading.value = true
     try {
-      const { data } = await authApi.getAuthUser()
-      user.value = data
+      const { data: envelope } = await authApi.getAuthUser()
+      // Respuesta: { success, data: { user }, message }
+      if (!envelope.success || !envelope.data) throw new Error('Sesión inválida')
+      user.value = envelope.data.user
     } catch {
       // Token inválido → limpiar sesión
       clearSession()
@@ -129,10 +134,36 @@ export const useAuthStore = defineStore('auth', () => {
 })
 
 // ─── Utilidad ─────────────────────────────────────────────────────────────────
+/**
+ * Extrae el mensaje de error más útil del error de Axios.
+ * Maneja:
+ *  - 401: credenciales incorrectas  → mensaje del backend
+ *  - 422: errores de validación     → primer error de campo o mensaje
+ *  - 429: rate limit                → mensaje amigable
+ *  - otros: mensaje genérico
+ */
 function extractErrorMessage(err: unknown): string {
-  if (typeof err === 'object' && err !== null && 'response' in err) {
-    const axiosErr = err as { response?: { data?: { message?: string } } }
-    return axiosErr.response?.data?.message ?? 'Error inesperado'
+  if (typeof err === 'object' && err !== null) {
+    // Error lanzado manualmente (e.g. success = false)
+    if (err instanceof Error) return err.message
+
+    if ('response' in err) {
+      const axiosErr = err as {
+        response?: { status?: number; data?: { message?: string; errors?: Record<string, string[]> } }
+      }
+      const status = axiosErr.response?.status
+      const body = axiosErr.response?.data
+
+      if (status === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.'
+
+      // 422: devolver el primer error de campo si existe
+      if (status === 422 && body?.errors) {
+        const firstField = Object.values(body.errors)[0]
+        if (firstField?.length) return firstField[0]
+      }
+
+      return body?.message ?? 'Error inesperado'
+    }
   }
   return 'Error de conexión'
 }

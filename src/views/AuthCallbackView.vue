@@ -35,10 +35,18 @@ const errorMsg = ref('')
 
 onMounted(async () => {
   /**
-   * El backend Laravel redirige al frontend con el token:
-   * /auth/callback?token=eyJ...
+   * El backend Laravel redirige al frontend con:
+   *   /auth/callback?token=3|ghi789rst...   → éxito
+   *   /auth/callback?error=google_auth_failed → fallo
    */
   const token = route.query.token as string | undefined
+  const error = route.query.error as string | undefined
+
+  // El backend informó un error en el flujo OAuth
+  if (error) {
+    await router.push({ name: 'Login', query: { error } })
+    return
+  }
 
   if (!token) {
     status.value = 'error'
@@ -47,7 +55,7 @@ onMounted(async () => {
   }
 
   try {
-    // Guardar token y obtener datos del usuario
+    // Guardar token y obtener datos del usuario desde GET /api/user
     await authStore.handleOAuthCallback(token)
 
     if (authStore.isAuthenticated) {
