@@ -58,12 +58,15 @@
         </el-row>
       </el-col>
     </el-row>
+    <!-- WebSocket toast notifications -->
+    <NotificationToast />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import NotificationToast from '@/components/NotificationToast.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
