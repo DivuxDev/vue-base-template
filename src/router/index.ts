@@ -2,13 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-/**
- * Definición de rutas de la aplicación.
- * - meta.requiresAuth = true  → solo accesible con sesión activa
- * - meta.guestOnly    = true  → redirige al home si ya está logueado
- */
 const routes: RouteRecordRaw[] = [
-  // ── Rutas con layout principal ──────────────────────────────────────────
   {
     path: '/',
     component: () => import('@/components/layout/MainLayout.vue'),
@@ -25,17 +19,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ProfileView.vue'),
         meta: { title: 'Mi Perfil', requiresAuth: true },
       },
-      // ── Área de administración ───────────────────────────────────────────────
       {
         path: 'admin/users',
         name: 'AdminUsers',
         component: () => import('@/views/admin/UsersAdminView.vue'),
         meta: { title: 'Gestión de Usuarios', requiresAuth: true, requiresAdmin: true },
       },
+      {
+        path: 'admin/audit-logs',
+        name: 'AuditLogs',
+        component: () => import('@/views/admin/AuditLogsView.vue'),
+        meta: { title: 'Registros de Auditoría', requiresAuth: true, requiresAdmin: true },
+      },
     ],
   },
-
-  // ── Rutas de autenticación (sin layout principal) ────────────────────────
   {
     path: '/login',
     name: 'Login',
@@ -48,16 +45,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/RegisterView.vue'),
     meta: { title: 'Registrarse', guestOnly: true },
   },
-
-  // ── Callback OAuth Google ────────────────────────────────────────────────
   {
     path: '/auth/callback',
     name: 'AuthCallback',
     component: () => import('@/views/AuthCallbackView.vue'),
     meta: { title: 'Autenticando…' },
   },
-
-  // ── 404 ─────────────────────────────────────────────────────────────────
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
@@ -71,37 +64,30 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-// ─── Navigation Guard ──────────────────────────────────────────────────────────
 router.beforeEach(async to => {
-  // Actualizar el título de la pestaña
   document.title = to.meta.title
     ? `${to.meta.title} – ${import.meta.env.VITE_APP_NAME}`
     : (import.meta.env.VITE_APP_NAME as string)
 
   const authStore = useAuthStore()
 
-  // Si hay token pero aún no se cargó el usuario, intentamos obtenerlo
   if (authStore.token && !authStore.user) {
     await authStore.fetchUser()
   }
 
-  // Ruta protegida → redirigir a login si no está autenticado
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'Login', query: { redirect: to.fullPath } }
   }
 
-  // Ruta solo para admins → redirigir al home si no es admin
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
     return { name: 'Home' }
   }
 
-  // Ruta solo para invitados → redirigir al home si ya está logueado
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     return { name: 'Home' }
   }
 })
 
-// ─── Manejar evento de 401 del interceptor de Axios ──────────────────────────
 window.addEventListener('auth:unauthenticated', () => {
   const authStore = useAuthStore()
   authStore.clearSession()

@@ -26,8 +26,8 @@ body {
     Oxygen,
     Ubuntu,
     sans-serif;
-  color: #303133;
-  background-color: #f5f7fa;
+  color: var(--app-text);
+  background-color: var(--app-bg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -38,7 +38,7 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--app-bg);
 }
 ::-webkit-scrollbar-thumb {
   background: #c0c4cc;

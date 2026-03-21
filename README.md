@@ -1,85 +1,255 @@
-# ⚡ Vue Base Template
+# Vue Base Template
 
-Starter project listo para producción construido con **Vue 3 + Vite + TypeScript + Element Plus**, preparado para conectarse con un backend **Laravel** que use **Sanctum/JWT** y **OAuth con Google**.
+SPA frontend built with **Vue 3 + Vite + TypeScript + Element Plus**, preconfigured to connect to the [laravel-base](../laravel-base) backend via **Sanctum Bearer token** auth, **Google OAuth**, and **Laravel Reverb** WebSockets.
 
 ---
 
-## 🚀 Inicio rápido
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Vue 3 (Composition API) |
+| Build tool | Vite 5 |
+| Language | TypeScript |
+| UI components | Element Plus |
+| State management | Pinia |
+| Routing | Vue Router 4 |
+| HTTP client | Axios (with interceptors) |
+| WebSockets | Laravel Echo + pusher-js (Reverb) |
+| Internationalization | vue-i18n (Spanish + English) |
+| Auto-imports | unplugin-auto-import + unplugin-vue-components |
+
+---
+
+## Features
+
+- **Authentication** — Login, register, logout with Sanctum Bearer tokens + Google OAuth
+- **Dark mode** — Light/dark theme toggle with persistence (localStorage + system preference)
+- **Internationalization (i18n)** — Full Spanish and English support, instant language switching
+- **Profile editing** — Edit name and upload avatar from the profile page
+- **Admin panel** — User management with pagination, search, sorting, role changes, password resets
+- **Audit logs** — Admin view of all system actions with filters by action, date range, and user search
+- **Pagination composable** — Generic `usePagination()` with debounced search, sorting, and page size
+- **WebSocket notifications** — Real-time login toasts via Laravel Reverb
+- **Route guards** — Role-based access control (auth, admin, guest-only)
+- **Loading states** — Skeleton loaders on all views during data fetch
+
+---
+
+## Quick start
 
 ```bash
-# 1. Clonar / descargar el proyecto
-# 2. Copiar variables de entorno
-cp .env.example .env
-
-# 3. Instalar dependencias
+# 1. Install dependencies
 npm install
 
-# 4. Lanzar servidor de desarrollo
+# 2. Copy environment file and fill in your values
+cp .env.example .env
+
+# 3. Start development server
 npm run dev
 ```
 
-La aplicación estará disponible en `http://localhost:3000`.
+The app will be available at `http://localhost:5173`.
 
 ---
 
-## 📁 Estructura del proyecto
+## Environment variables
+
+Copy `.env.example` to `.env`:
+
+```env
+# Backend API base URL (used in production builds only — dev uses Vite proxy)
+VITE_API_BASE_URL=http://localhost:8000
+
+# Laravel Reverb WebSocket
+# Must match REVERB_APP_KEY in the Laravel .env
+VITE_REVERB_APP_KEY=your_reverb_app_key
+VITE_REVERB_HOST=localhost
+VITE_REVERB_PORT=8081
+VITE_REVERB_SCHEME=http
+
+# App metadata
+VITE_APP_NAME="Vue Base Template"
+VITE_APP_URL=http://localhost:5173
+```
+
+> In **development**, Axios sends requests to `/api/...` which Vite proxies to `http://localhost:8000`. No CORS issues.
+> In **production**, Axios uses `VITE_API_BASE_URL` as the absolute base URL.
+
+---
+
+## Project structure
 
 ```
 src/
 ├── api/
-│   ├── axios.ts          # Instancia Axios + interceptores
-│   └── auth.ts           # Endpoints de autenticación
+│   ├── axios.ts              # Axios instance — Vite proxy in dev, absolute URL in prod
+│   ├── auth.ts               # Auth endpoints (register, login, logout, user)
+│   ├── adminUsers.ts         # Admin user management endpoints (paginated)
+│   ├── auditLogs.ts          # Admin audit log endpoints (paginated, filterable)
+│   └── profile.ts            # Profile update endpoint (multipart/form-data)
 ├── assets/
 │   └── styles/
-│       └── main.css      # Estilos globales
+│       ├── main.css          # Global styles with CSS variables
+│       └── dark.css          # Dark mode CSS custom properties
 ├── components/
+│   ├── NotificationToast.vue # Real-time login notifications via Reverb
 │   └── layout/
-│       └── MainLayout.vue  # Navbar + footer
+│       └── MainLayout.vue    # App shell: navbar, dark mode toggle, language switcher
 ├── composables/
-│   └── useAuth.ts        # Lógica de auth + navegación
+│   ├── useAuth.ts            # Auth actions + navigation logic
+│   ├── useDarkMode.ts        # Dark mode toggle with persistence
+│   ├── useLocale.ts          # Language switching (ES/EN) with persistence
+│   ├── useNotifications.ts   # WebSocket notification listener
+│   └── usePagination.ts      # Generic pagination, search, sort composable
+├── i18n/
+│   ├── index.ts              # vue-i18n setup
+│   └── locales/
+│       ├── es.ts             # Spanish translations
+│       └── en.ts             # English translations
+├── lib/
+│   └── echo.ts               # Laravel Echo instance (conditionally created)
 ├── router/
-│   └── index.ts          # Rutas + navigation guards
+│   └── index.ts              # Routes + navigation guards
 ├── stores/
-│   └── auth.ts           # Pinia store de autenticación
+│   └── auth.ts               # Pinia auth store (user, token, isAdmin, updateProfile)
 ├── types/
-│   ├── auth.ts           # Tipos TypeScript de auth
-│   └── router.d.ts       # Extensión de tipos para meta
+│   ├── auth.ts               # TypeScript types for User, AuthResponse, etc.
+│   ├── audit.ts              # AuditLog type
+│   ├── pagination.ts         # PaginationMeta, PaginationParams, PaginatedResponse
+│   └── router.d.ts           # Vue Router meta type extensions
 └── views/
-    ├── HomeView.vue
-    ├── LoginView.vue
-    ├── RegisterView.vue
-    ├── ProfileView.vue
-    └── AuthCallbackView.vue  # Callback OAuth Google
+    ├── HomeView.vue           # Landing page with feature showcase
+    ├── LoginView.vue          # Login form + Google OAuth
+    ├── RegisterView.vue       # Registration with password policy hints
+    ├── ProfileView.vue        # Profile view + edit dialog (name, avatar)
+    ├── AuthCallbackView.vue   # Reads ?token= after Google OAuth redirect
+    └── admin/
+        ├── UsersAdminView.vue  # User management: search, pagination, sort, CRUD
+        └── AuditLogsView.vue   # Audit logs: filters, expandable diff rows
 ```
 
 ---
 
-## 🔌 Conectar con Laravel
+## Routing and access control
 
-### 1. Configurar la URL base
+Routes are protected via `router.beforeEach` navigation guards using route meta flags:
 
-Edita `.env`:
+| Meta flag | Behavior |
+|---|---|
+| `requiresAuth: true` | Redirects to `/login` if not authenticated |
+| `requiresAdmin: true` | Redirects to `/` if authenticated but not admin |
+| `guestOnly: true` | Redirects to `/` if already authenticated |
 
-```env
-VITE_API_BASE_URL=http://localhost:8000
+### Route list
+
+| Path | Name | Access | Description |
+|---|---|---|---|
+| `/` | `Home` | Public | Landing page with feature cards |
+| `/login` | `Login` | Guest only | Login form |
+| `/register` | `Register` | Guest only | Registration form |
+| `/profile` | `Profile` | Auth required | User profile + edit dialog |
+| `/admin/users` | `AdminUsers` | Admin only | User management with pagination |
+| `/admin/audit-logs` | `AuditLogs` | Admin only | Audit log viewer with filters |
+| `/auth/callback` | `AuthCallback` | Public | Receives token from Google OAuth |
+
+---
+
+## Dark mode
+
+Toggle dark/light mode via the moon/sun icon in the header. State is persisted to `localStorage` under `color-scheme` and falls back to the system `prefers-color-scheme` preference.
+
+Uses Element Plus built-in dark CSS variables (`element-plus/theme-chalk/dark/css-vars.css`) plus custom `dark.css` with app-specific variables.
+
+---
+
+## Internationalization (i18n)
+
+The app supports **Spanish** (default) and **English**. Switch languages via the ES/EN dropdown in the header. The choice is persisted to `localStorage` under `locale`.
+
+All user-facing strings use `$t('key')` / `t('key')` via vue-i18n. Translation files are at `src/i18n/locales/es.ts` and `src/i18n/locales/en.ts`.
+
+---
+
+## Authentication
+
+The app uses **Sanctum Bearer tokens** stored in `localStorage` under the key `auth_token`.
+
+**Login flow:**
+1. `POST /api/auth/login` → receives `{ user, token }`
+2. Token stored in `localStorage` + Pinia store
+3. Axios request interceptor injects `Authorization: Bearer {token}` on every request
+4. On `401` response, token is removed and `auth:unauthenticated` event dispatched (router guard redirects to `/login`)
+
+**Logout flow:**
+1. `POST /api/auth/logout` → revokes token on server
+2. Local store and `localStorage` cleared
+3. Navigate to `/login`
+
+---
+
+## Google OAuth flow
+
+1. User clicks "Login with Google"
+2. Frontend redirects browser to `http://localhost:8000/api/auth/google/redirect`
+3. Google redirects to Laravel callback
+4. Laravel redirects to `/auth/callback?token=<sanctum_token>`
+5. `AuthCallbackView.vue` reads `?token=` from query params, stores it, navigates to `/`
+6. On error, Laravel redirects to `/auth/callback?error=google_auth_failed`
+
+---
+
+## Pagination composable
+
+The `usePagination<T>()` composable provides a generic way to fetch paginated data from any backend endpoint:
+
+```ts
+const { data, meta, loading, goToPage, setSearch, setSort, refresh, params } =
+  usePagination(fetchFn, { per_page: 15 })
 ```
 
-### 2. Endpoints del backend
+Features:
+- Auto-fetches on any param change (page, search, sort, per_page)
+- Debounced search (300ms)
+- Configurable default params
+- Returns reactive `meta` with `current_page`, `last_page`, `per_page`, `total`
 
-| Método | Endpoint                      | Auth         | Descripción                      |
-|--------|-------------------------------|--------------|----------------------------------|
-| POST   | `/api/auth/register`          | No           | Registro (devuelve token + user) |
-| POST   | `/api/auth/login`             | No           | Login (devuelve token + user)    |
-| POST   | `/api/auth/logout`            | Bearer token | Revoca el token                  |
-| GET    | `/api/user`                   | Bearer token | Perfil del usuario               |
-| GET    | `/api/auth/google/redirect`   | No           | Inicia flujo OAuth Google        |
-| GET    | `/api/auth/google/callback`   | No           | Callback OAuth (gestionado por el navegador) |
+---
 
-> **Usuarios de prueba (seeder):** `test@example.com` / `password`
+## WebSocket (Reverb)
 
-### 3. Estructura de respuesta esperada
+Echo is initialized in `src/lib/echo.ts` only when `VITE_REVERB_APP_KEY` is set. It connects to Reverb using the `pusher-js` adapter.
 
-Todas las respuestas siguen el mismo envoltorio:
+The `NotificationToast.vue` component listens to the public `notifications` channel and shows a toast when another user logs in:
+
+```ts
+echo.channel('notifications').listen('.user.logged-in', (e) => {
+  // shows notification: "{name} just logged in"
+})
+```
+
+---
+
+## API integration
+
+### Endpoints consumed
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register |
+| `POST` | `/api/auth/login` | Login |
+| `POST` | `/api/auth/logout` | Logout |
+| `GET` | `/api/user` | Get current user |
+| `PUT` | `/api/user/profile` | Update name/avatar (multipart) |
+| `GET` | `/api/admin/users` | List users (paginated, searchable) |
+| `PATCH` | `/api/admin/users/{id}/role` | Change role (admin) |
+| `POST` | `/api/admin/users/{id}/reset-password` | Reset password (admin) |
+| `DELETE` | `/api/admin/users/{id}` | Delete user (admin) |
+| `GET` | `/api/admin/audit-logs` | List audit logs (paginated, filterable) |
+
+### Response envelope
+
+All backend responses follow:
 
 ```json
 {
@@ -89,174 +259,56 @@ Todas las respuestas siguen el mismo envoltorio:
 }
 ```
 
+Paginated endpoints include `meta` inside `data`:
+
 ```json
-// POST /api/auth/login  |  POST /api/auth/register
 {
-  "success": true,
   "data": {
-    "user": {
-      "id": 1,
-      "name": "Juan Pérez",
-      "email": "juan@example.com",
-      "avatar": null,
-      "created_at": "2026-03-11T10:00:00.000000Z"
-    },
-    "token": "1|abc123xyz..."
-  },
-  "message": "Login successful."
-}
-
-// GET /api/user
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": 1,
-      "name": "Juan Pérez",
-      "email": "juan@example.com",
-      "avatar": null,
-      "created_at": "2026-03-11T10:00:00.000000Z"
-    }
-  },
-  "message": "User profile retrieved successfully."
-}
-```
-
-OAuth Google — en caso de éxito el backend redirige a:
-```
-http://localhost:3000/auth/callback?token=3|ghi789rst...
-```
-En caso de error:
-```
-http://localhost:3000/auth/callback?error=google_auth_failed
-```
-
-### 4. CORS en Laravel
-
-En `config/cors.php`:
-
-```php
-'allowed_origins' => ['http://localhost:3000'],
-'supports_credentials' => true,
-```
-
-### 5. Laravel Sanctum
-
-En `config/sanctum.php`:
-
-```php
-'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', 'localhost:3000')),
-```
-
-En el controlador:
-
-```php
-// AuthController.php
-public function login(Request $request)
-{
-    if (!Auth::attempt($request->only('email', 'password'))) {
-        return response()->json([
-            'success' => false,
-            'data'    => null,
-            'message' => 'Invalid credentials. Please check your email and password.',
-        ], 401);
-    }
-
-    $user  = Auth::user();
-    $token = $user->createToken('api-token')->plainTextToken;
-
-    return response()->json([
-        'success' => true,
-        'data'    => ['user' => $user, 'token' => $token],
-        'message' => 'Login successful.',
-    ]);
+    "users": [...],
+    "meta": { "current_page": 1, "last_page": 5, "per_page": 15, "total": 72 }
+  }
 }
 ```
 
 ---
 
-## 🔐 OAuth con Google
+## Connecting to the backend
 
-### 1. Instalar Socialite en Laravel
+1. Make sure [laravel-base](../laravel-base) is running on `http://localhost:8000`
+2. Set `VITE_REVERB_APP_KEY` to the same value as `REVERB_APP_KEY` in the Laravel `.env`
+3. Run `npm run dev` — the Vite proxy handles `/api/*` → `http://localhost:8000`
+
+### Vite proxy (development only)
+
+Configured in `vite.config.ts`:
+
+```ts
+proxy: {
+  '/api': {
+    target: 'http://localhost:8000',
+    changeOrigin: true,
+  }
+}
+```
+
+---
+
+## Available scripts
 
 ```bash
-composer require laravel/socialite
-```
-
-### 2. Configurar en `config/services.php`
-
-```php
-'google' => [
-    'client_id'     => env('GOOGLE_CLIENT_ID'),
-    'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-    'redirect'      => env('GOOGLE_REDIRECT_URI'),
-],
-```
-
-### 3. Rutas en Laravel
-
-```php
-Route::get('/api/auth/google/redirect', [AuthController::class, 'googleRedirect']);
-Route::get('/api/auth/google/callback', [AuthController::class, 'googleCallback']);
-```
-
-### 4. Controlador
-
-```php
-public function googleRedirect()
-{
-    return Socialite::driver('google')->stateless()->redirect();
-}
-
-public function googleCallback()
-{
-    $googleUser = Socialite::driver('google')->stateless()->user();
-
-    $user = User::updateOrCreate(
-        ['email' => $googleUser->getEmail()],
-        ['name'  => $googleUser->getName()]
-    );
-
-    $token = $user->createToken('google-token')->plainTextToken;
-
-    // Redirigir al frontend con el token
-    return redirect(env('FRONTEND_URL') . '/auth/callback?token=' . $token);
-}
-```
-
-### 5. Variables de entorno en Laravel `.env`
-
-```env
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
-FRONTEND_URL=http://localhost:3000
+npm run dev       # Start development server (http://localhost:5173)
+npm run build     # Type-check + production build
+npm run preview   # Preview production build locally
+npm run lint      # ESLint with auto-fix
+npm run format    # Prettier format all src files
 ```
 
 ---
 
-## 🛠️ Scripts disponibles
+## Test accounts (from Laravel seeder)
 
-```bash
-npm run dev       # Servidor de desarrollo
-npm run build     # Build de producción
-npm run preview   # Preview del build
-npm run lint      # Linting con ESLint
-npm run format    # Formateo con Prettier
-```
-
----
-
-## 📦 Stack tecnológico
-
-| Tecnología     | Versión | Uso                          |
-|----------------|---------|------------------------------|
-| Vue 3          | ^3.4    | Framework UI                 |
-| Vite           | ^5.1    | Build tool                   |
-| TypeScript     | ^5.4    | Tipado estático              |
-| Vue Router     | ^4.3    | Enrutamiento + guards        |
-| Pinia          | ^2.1    | Estado global                |
-| Element Plus   | ^2.6    | Componentes UI               |
-| Axios          | ^1.6    | HTTP client + interceptores  |
-| ESLint         | ^8.57   | Linting                      |
-| Prettier       | ^3.2    | Formateo de código           |
+| Email | Password | Role |
+|---|---|---|
+| `admin@example.com` | `password` | Admin — access to `/admin/users` and `/admin/audit-logs` |
+| `user@example.com` | `password` | Regular user |
+| `test@example.com` | `password` | Regular user |

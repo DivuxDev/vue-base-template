@@ -4,29 +4,44 @@
     <div class="page-header">
       <h1 class="page-title">
         <el-icon><UserFilled /></el-icon>
-        Gestión de Usuarios
+        {{ t('admin.users.title') }}
       </h1>
-      <el-button :loading="loading" :icon="Refresh" @click="loadUsers">Recargar</el-button>
+      <el-button :loading="loading" :icon="Refresh" @click="refresh">
+        {{ t('admin.users.reload') }}
+      </el-button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <el-input
+        v-model="searchValue"
+        :placeholder="t('admin.users.search')"
+        size="large"
+        clearable
+        :prefix-icon="Search"
+        @input="setSearch(searchValue)"
+        @clear="setSearch('')"
+      />
     </div>
 
     <!-- Stats -->
     <el-row :gutter="16" class="stats-row">
       <el-col :xs="12" :sm="6">
         <el-card shadow="never" class="stat-card">
-          <div class="stat-number">{{ users.length }}</div>
-          <div class="stat-label">Total usuarios</div>
+          <div class="stat-number">{{ meta.total }}</div>
+          <div class="stat-label">{{ t('admin.users.totalUsers') }}</div>
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-number text-danger">{{ adminCount }}</div>
-          <div class="stat-label">Admins</div>
+          <div class="stat-label">{{ t('admin.users.admins') }}</div>
         </el-card>
       </el-col>
       <el-col :xs="12" :sm="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-number text-primary">{{ userCount }}</div>
-          <div class="stat-label">Users</div>
+          <div class="stat-label">{{ t('admin.users.users') }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -39,27 +54,28 @@
         stripe
         style="width: 100%"
         row-key="id"
+        @sort-change="handleSortChange"
       >
         <!-- ID -->
-        <el-table-column prop="id" label="ID" width="70" align="center" />
+        <el-table-column prop="id" :label="t('admin.users.id')" width="70" align="center" sortable="custom" />
 
         <!-- Avatar + Name -->
-        <el-table-column label="Usuario" min-width="200">
+        <el-table-column :label="t('admin.users.user')" min-width="200" sortable="custom" prop="name">
           <template #default="{ row }">
             <div class="user-cell">
               <el-avatar :size="34" :src="row.avatar ?? undefined" class="user-avatar">
                 {{ initials(row.name) }}
               </el-avatar>
-              <span class="user-name">{{ row.name }}</span>
+              <div class="user-info">
+                <span class="user-name">{{ row.name }}</span>
+                <span class="user-email">{{ row.email }}</span>
+              </div>
             </div>
           </template>
         </el-table-column>
 
-        <!-- Email -->
-        <el-table-column prop="email" label="Email" min-width="220" />
-
         <!-- Role -->
-        <el-table-column label="Rol" width="120" align="center">
+        <el-table-column :label="t('admin.users.role')" width="120" align="center" sortable="custom" prop="role">
           <template #default="{ row }">
             <el-tag :type="row.role === 'admin' ? 'danger' : 'primary'" effect="light">
               {{ row.role }}
@@ -68,14 +84,14 @@
         </el-table-column>
 
         <!-- Created at -->
-        <el-table-column label="Creado" width="140">
+        <el-table-column :label="t('admin.users.created')" width="140" sortable="custom" prop="created_at">
           <template #default="{ row }">
             <span class="date-text">{{ formatDate(row.created_at) }}</span>
           </template>
         </el-table-column>
 
         <!-- Actions -->
-        <el-table-column label="Acciones" width="260" align="center" fixed="right">
+        <el-table-column :label="t('admin.users.actions')" width="260" align="center" fixed="right">
           <template #default="{ row }">
             <div class="actions-cell">
               <!-- Change Role -->
@@ -91,7 +107,7 @@
               </el-select>
 
               <!-- Reset Password -->
-              <el-tooltip content="Resetear contraseña" placement="top">
+              <el-tooltip :content="t('admin.users.resetPassword')" placement="top">
                 <el-button
                   size="small"
                   :icon="Key"
@@ -101,7 +117,7 @@
 
               <!-- Delete -->
               <el-tooltip
-                :content="row.id === currentUserId ? 'No puedes eliminarte a ti mismo' : 'Eliminar usuario'"
+                :content="row.id === currentUserId ? t('admin.users.cannotDeleteSelf') : t('admin.users.deleteUser')"
                 placement="top"
               >
                 <el-button
@@ -116,18 +132,32 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- Pagination -->
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-if="meta.last_page > 1"
+          :current-page="meta.current_page"
+          :page-size="meta.per_page"
+          :total="meta.total"
+          :page-sizes="[10, 15, 25, 50]"
+          layout="total, sizes, prev, pager, next"
+          @current-change="goToPage"
+          @size-change="handlePageSizeChange"
+        />
+      </div>
     </el-card>
 
-    <!-- Dialog: nueva contraseña generada -->
+    <!-- Dialog: generated temporary password -->
     <el-dialog
       v-model="passwordDialog.visible"
-      title="Contraseña reseteada"
+      :title="t('admin.users.passwordReset')"
       width="420px"
       :close-on-click-modal="false"
     >
       <el-alert
-        title="Contraseña temporal generada"
-        description="Copia esta contraseña y compártela con el usuario de forma segura. No se volverá a mostrar."
+        :title="t('admin.users.tempPasswordAlert')"
+        :description="t('admin.users.tempPasswordDesc')"
         type="warning"
         show-icon
         :closable="false"
@@ -136,91 +166,110 @@
       <div class="password-box">
         <code class="password-value">{{ passwordDialog.newPassword }}</code>
         <el-button size="small" :icon="CopyDocument" @click="copyPassword">
-          Copiar
+          {{ copied ? t('common.confirm') : t('admin.users.copy') }}
         </el-button>
       </div>
       <template #footer>
-        <el-button type="primary" @click="passwordDialog.visible = false">Entendido</el-button>
+        <el-button type="primary" @click="passwordDialog.visible = false">
+          {{ t('admin.users.understood') }}
+        </el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Refresh, Key, Delete, CopyDocument } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { Refresh, Key, Delete, CopyDocument, Search } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import * as adminApi from '@/api/adminUsers'
 import type { User } from '@/types/auth'
+import type { PaginationParams } from '@/types/pagination'
+import { usePagination } from '@/composables/usePagination'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const currentUserId = computed(() => authStore.user?.id)
 
-const users = ref<User[]>([])
-const loading = ref(false)
-
-const adminCount = computed(() => users.value.filter(u => u.role === 'admin').length)
-const userCount = computed(() => users.value.filter(u => u.role === 'user').length)
+const searchValue = ref('')
+const copied = ref(false)
 
 const passwordDialog = ref({
   visible: false,
   newPassword: '',
 })
 
-// ─── Load users ────────────────────────────────────────────────────────────────
-async function loadUsers() {
-  loading.value = true
-  try {
-    const { data: envelope } = await adminApi.getUsers()
-    if (envelope.success && envelope.data) {
-      users.value = envelope.data.users as User[]
-    }
-  } catch {
-    ElMessage.error('No se pudieron cargar los usuarios.')
-  } finally {
-    loading.value = false
+// ─── Pagination composable ──────────────────────────────────────────────────
+const fetchUsers = (params: PaginationParams) => adminApi.getUsers(params)
+
+const {
+  data: usersData,
+  meta,
+  loading,
+  goToPage,
+  setSearch,
+  setSort,
+  refresh,
+  params,
+} = usePagination(fetchUsers, { per_page: 15 })
+
+const users = computed<User[]>(() => {
+  if (!usersData.value) return []
+  return (usersData.value as { users: User[] }).users ?? []
+})
+
+const adminCount = computed(() => users.value.filter(u => u.role === 'admin').length)
+const userCount = computed(() => users.value.filter(u => u.role === 'user').length)
+
+function handlePageSizeChange(size: number) {
+  params.per_page = size
+  params.page = 1
+}
+
+function handleSortChange({ prop, order }: { prop: string; order: string | null }) {
+  if (!prop || !order) {
+    setSort('', 'asc')
+  } else {
+    setSort(prop, order === 'ascending' ? 'asc' : 'desc')
   }
 }
 
-onMounted(loadUsers)
-
-// ─── Change role ───────────────────────────────────────────────────────────────
+// ─── Change role ────────────────────────────────────────────────────────────
 async function handleRoleChange(user: User, newRole: 'admin' | 'user') {
   try {
     await ElMessageBox.confirm(
-      `¿Cambiar el rol de <strong>${user.name}</strong> a <strong>${newRole}</strong>?`,
-      'Cambiar rol',
+      t('admin.users.confirmRoleMsg', { name: user.name, role: newRole }),
+      t('admin.users.confirmRoleChange'),
       {
-        confirmButtonText: 'Confirmar',
-        cancelButtonText: 'Cancelar',
+        confirmButtonText: t('admin.users.yesChange'),
+        cancelButtonText: t('common.cancel'),
         type: 'warning',
         dangerouslyUseHTMLString: true,
       }
     )
     const { data: envelope } = await adminApi.changeUserRole(user.id, newRole)
     if (envelope.success && envelope.data) {
-      // Actualizar en local sin recargar toda la lista
-      const idx = users.value.findIndex(u => u.id === user.id)
-      if (idx !== -1) users.value[idx] = envelope.data.user as User
-      ElMessage.success('Rol actualizado correctamente.')
+      refresh()
+      ElMessage.success(t('admin.users.roleUpdated'))
     }
   } catch (err: unknown) {
     if (err !== 'cancel') {
-      ElMessage.error(extractMsg(err) ?? 'Error al cambiar el rol.')
+      ElMessage.error(extractMsg(err) ?? t('admin.users.roleError'))
     }
   }
 }
 
-// ─── Reset password ────────────────────────────────────────────────────────────
+// ─── Reset password ──────────────────────────────────────────────────────────
 async function handleResetPassword(user: User) {
   try {
     await ElMessageBox.confirm(
-      `¿Resetear la contraseña de <strong>${user.name}</strong>? Se generará una contraseña aleatoria y se revocarán todas sus sesiones.`,
-      'Resetear contraseña',
+      t('admin.users.resetPasswordMsg', { name: user.name }),
+      t('admin.users.resetPasswordTitle'),
       {
-        confirmButtonText: 'Sí, resetear',
-        cancelButtonText: 'Cancelar',
+        confirmButtonText: t('admin.users.yesReset'),
+        cancelButtonText: t('common.cancel'),
         type: 'warning',
         dangerouslyUseHTMLString: true,
       }
@@ -234,43 +283,45 @@ async function handleResetPassword(user: User) {
     }
   } catch (err: unknown) {
     if (err !== 'cancel') {
-      ElMessage.error(extractMsg(err) ?? 'Error al resetear la contraseña.')
+      ElMessage.error(extractMsg(err) ?? t('admin.users.resetError'))
     }
   }
 }
 
-// ─── Delete user ───────────────────────────────────────────────────────────────
+// ─── Delete user ─────────────────────────────────────────────────────────────
 async function handleDelete(user: User) {
   try {
     await ElMessageBox.confirm(
-      `¿Eliminar permanentemente a <strong>${user.name}</strong> (${user.email})? Esta acción no se puede deshacer.`,
-      'Eliminar usuario',
+      t('admin.users.deleteUserMsg', { name: user.name, email: user.email }),
+      t('admin.users.deleteUserTitle'),
       {
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar',
+        confirmButtonText: t('admin.users.yesDelete'),
+        cancelButtonText: t('common.cancel'),
         type: 'error',
         dangerouslyUseHTMLString: true,
       }
     )
     const { data: envelope } = await adminApi.deleteUser(user.id)
     if (envelope.success) {
-      users.value = users.value.filter(u => u.id !== user.id)
-      ElMessage.success('Usuario eliminado.')
+      refresh()
+      ElMessage.success(t('admin.users.userDeleted'))
     }
   } catch (err: unknown) {
     if (err !== 'cancel') {
-      ElMessage.error(extractMsg(err) ?? 'Error al eliminar el usuario.')
+      ElMessage.error(extractMsg(err) ?? t('admin.users.deleteError'))
     }
   }
 }
 
-// ─── Copy password to clipboard ───────────────────────────────────────────────
+// ─── Copy password to clipboard ──────────────────────────────────────────────
 async function copyPassword() {
   await navigator.clipboard.writeText(passwordDialog.value.newPassword)
-  ElMessage.success('Contraseña copiada al portapapeles.')
+  copied.value = true
+  ElMessage.success(t('admin.users.copied'))
+  setTimeout(() => { copied.value = false }, 2000)
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function initials(name: string): string {
   return name
     .split(' ')
@@ -281,7 +332,7 @@ function initials(name: string): string {
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('es-ES', {
+  return new Date(dateStr).toLocaleDateString(undefined, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -306,7 +357,7 @@ function extractMsg(err: unknown): string | null {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -314,11 +365,16 @@ function extractMsg(err: unknown): string | null {
 .page-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #303133;
+  color: var(--app-text);
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
+}
+
+.search-bar {
+  margin-bottom: 20px;
+  max-width: 400px;
 }
 
 .stats-row {
@@ -334,7 +390,7 @@ function extractMsg(err: unknown): string | null {
 .stat-number {
   font-size: 2rem;
   font-weight: 800;
-  color: #303133;
+  color: var(--app-text);
   line-height: 1;
   margin-bottom: 4px;
 }
@@ -349,7 +405,7 @@ function extractMsg(err: unknown): string | null {
 
 .stat-label {
   font-size: 0.8rem;
-  color: #909399;
+  color: var(--app-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -365,21 +421,38 @@ function extractMsg(err: unknown): string | null {
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--auth-gradient-start) 0%, var(--auth-gradient-end) 100%);
   color: #fff;
   font-weight: 700;
   font-size: 12px;
   flex-shrink: 0;
 }
 
+.user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .user-name {
   font-weight: 500;
-  color: #303133;
+  color: var(--app-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-email {
+  font-size: 0.8rem;
+  color: var(--app-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .date-text {
   font-size: 0.85rem;
-  color: #606266;
+  color: var(--app-text-secondary);
 }
 
 .actions-cell {
@@ -390,12 +463,18 @@ function extractMsg(err: unknown): string | null {
   flex-wrap: wrap;
 }
 
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 4px;
+}
+
 .password-box {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #f5f7fa;
-  border: 1px solid #e4e7ed;
+  background: var(--app-bg);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
   padding: 12px 16px;
 }
@@ -404,7 +483,7 @@ function extractMsg(err: unknown): string | null {
   font-family: 'Courier New', monospace;
   font-size: 1.1rem;
   font-weight: 700;
-  color: #303133;
+  color: var(--app-text);
   flex: 1;
   word-break: break-all;
 }

@@ -17,24 +17,57 @@
           :default-active="activeRoute"
           router
         >
-          <el-menu-item index="/">Inicio</el-menu-item>
-          <el-menu-item v-if="isAuthenticated" index="/profile">Mi Perfil</el-menu-item>
+          <el-menu-item index="/">{{ t('nav.home') }}</el-menu-item>
+          <el-menu-item v-if="isAuthenticated" index="/profile">{{ t('nav.profile') }}</el-menu-item>
 
-          <!-- Menú admin: solo visible para administradores -->
+          <!-- Admin submenu: only visible to administrators -->
           <el-sub-menu v-if="isAdmin" index="admin">
             <template #title>
               <el-icon><Setting /></el-icon>
-              Admin
+              {{ t('nav.admin') }}
             </template>
             <el-menu-item index="/admin/users">
               <el-icon><UserFilled /></el-icon>
-              Gestión de Usuarios
+              {{ t('nav.userManagement') }}
+            </el-menu-item>
+            <el-menu-item index="/admin/audit-logs">
+              <el-icon><Document /></el-icon>
+              {{ t('nav.auditLogs') }}
             </el-menu-item>
           </el-sub-menu>
         </el-menu>
 
-        <!-- Acciones de usuario -->
+        <!-- Header actions -->
         <div class="header-actions">
+          <!-- Dark mode toggle -->
+          <el-tooltip :content="isDark ? t('common.lightMode') : t('common.darkMode')" placement="bottom">
+            <el-button circle @click="toggleDark">
+              <el-icon>
+                <Sunny v-if="isDark" />
+                <Moon v-else />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+
+          <!-- Language switcher -->
+          <el-dropdown @command="setLocale" trigger="click">
+            <el-button circle>
+              <span class="lang-label">{{ currentLocale.toUpperCase() }}</span>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-for="loc in availableLocales"
+                  :key="loc.value"
+                  :command="loc.value"
+                  :disabled="currentLocale === loc.value"
+                >
+                  {{ loc.label }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
           <template v-if="isAuthenticated">
             <el-dropdown @command="handleCommand" trigger="click">
               <el-button type="primary" circle>
@@ -46,10 +79,10 @@
                     <strong>{{ authStore.userName }}</strong>
                   </el-dropdown-item>
                   <el-dropdown-item divided command="profile">
-                    <el-icon><UserFilled /></el-icon> Mi Perfil
+                    <el-icon><UserFilled /></el-icon> {{ t('nav.profile') }}
                   </el-dropdown-item>
                   <el-dropdown-item command="logout" class="text-danger">
-                    <el-icon><SwitchButton /></el-icon> Cerrar sesión
+                    <el-icon><SwitchButton /></el-icon> {{ t('nav.logout') }}
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -58,17 +91,17 @@
 
           <template v-else>
             <router-link to="/login">
-              <el-button>Iniciar sesión</el-button>
+              <el-button>{{ t('nav.login') }}</el-button>
             </router-link>
             <router-link to="/register">
-              <el-button type="primary">Registrarse</el-button>
+              <el-button type="primary">{{ t('nav.register') }}</el-button>
             </router-link>
           </template>
         </div>
       </div>
     </el-header>
 
-    <!-- ── Contenido principal ───────────────────────────────────────────── -->
+    <!-- ── Main content ───────────────────────────────────────────────── -->
     <el-main class="app-main">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
@@ -77,7 +110,7 @@
       </router-view>
     </el-main>
 
-    <!-- ── Footer ────────────────────────────────────────────────────────── -->
+    <!-- ── Footer ────────────────────────────────────────────────────── -->
     <el-footer class="app-footer">
       <span>© {{ currentYear }} {{ appName }}. Construido con Vue 3 + Laravel.</span>
     </el-footer>
@@ -87,12 +120,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useDarkMode } from '@/composables/useDarkMode'
+import { useLocale, availableLocales } from '@/composables/useLocale'
 import { ElMessageBox } from 'element-plus'
+import type { AppLocale } from '@/composables/useLocale'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { isDark, toggleDark } = useDarkMode()
+const { currentLocale, setLocale } = useLocale()
 
 const appName = import.meta.env.VITE_APP_NAME as string
 const currentYear = new Date().getFullYear()
@@ -103,13 +143,17 @@ const activeRoute = computed(() => route.path)
 
 async function handleCommand(command: string) {
   if (command === 'logout') {
-    await ElMessageBox.confirm('¿Seguro que quieres cerrar sesión?', 'Confirmar', {
-      confirmButtonText: 'Sí, salir',
-      cancelButtonText: 'Cancelar',
-      type: 'warning',
-    })
-    await authStore.logout()
-    await router.push({ name: 'Login' })
+    try {
+      await ElMessageBox.confirm(t('nav.confirmLogoutMsg'), t('nav.confirmLogout'), {
+        confirmButtonText: t('nav.yesLogout'),
+        cancelButtonText: t('nav.cancel'),
+        type: 'warning',
+      })
+      await authStore.logout()
+      await router.push({ name: 'Login' })
+    } catch {
+      // User cancelled
+    }
   } else if (command === 'profile') {
     await router.push({ name: 'Profile' })
   }
@@ -124,8 +168,8 @@ async function handleCommand(command: string) {
 }
 
 .app-header {
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  background: var(--app-header-bg);
+  border-bottom: 1px solid var(--app-border);
   padding: 0;
   position: sticky;
   top: 0;
@@ -159,13 +203,14 @@ async function handleCommand(command: string) {
 .brand-name {
   font-size: 18px;
   font-weight: 700;
-  color: #303133;
+  color: var(--app-text);
   white-space: nowrap;
 }
 
 .nav-menu {
   flex: 1;
   border-bottom: none !important;
+  background: transparent;
 }
 
 .header-actions {
@@ -179,6 +224,11 @@ async function handleCommand(command: string) {
   text-decoration: none;
 }
 
+.lang-label {
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .app-main {
   flex: 1;
   padding: 32px 24px;
@@ -189,12 +239,12 @@ async function handleCommand(command: string) {
 }
 
 .app-footer {
-  background: #f5f7fa;
-  border-top: 1px solid #e4e7ed;
+  background: var(--app-footer-bg);
+  border-top: 1px solid var(--app-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #909399;
+  color: var(--app-text-secondary);
   font-size: 13px;
 }
 

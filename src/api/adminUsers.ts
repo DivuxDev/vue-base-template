@@ -1,6 +1,7 @@
 import apiClient from './axios'
 import type { User } from '@/types/auth'
 import type { ApiResponse } from '@/types/auth'
+import type { PaginationParams, PaginationMeta } from '@/types/pagination'
 
 /**
  * Módulo de llamadas a la API de administración de usuarios.
@@ -12,12 +13,18 @@ import type { ApiResponse } from '@/types/auth'
  *   DELETE /api/admin/users/{id}
  */
 
-export interface AdminUsersResponse extends ApiResponse<{ users: User[] }> {}
+export interface AdminUsersData {
+  users: User[]
+  meta: PaginationMeta
+}
+
+export interface AdminUsersResponse extends ApiResponse<AdminUsersData> {}
 export interface AdminUserResponse extends ApiResponse<{ user: User }> {}
 export interface ResetPasswordResponse extends ApiResponse<{ new_password: string }> {}
 
-/** GET /api/admin/users → lista todos los usuarios */
-export const getUsers = () => apiClient.get<AdminUsersResponse>('/api/admin/users')
+/** GET /api/admin/users → lista todos los usuarios con paginación */
+export const getUsers = (params?: PaginationParams) =>
+  apiClient.get<AdminUsersResponse>('/api/admin/users', { params })
 
 /**
  * PATCH /api/admin/users/{id}/role

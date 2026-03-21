@@ -1,0 +1,23 @@
+html.dark {
+  --app-bg: #1a1a2e;
+  --app-text: #e4e7ed;
+  --app-text-secondary: #a8abb2;
+  --app-card-bg: #242442;
+  --app-header-bg: #1e1e3a;
+  --app-border: #363660;
+  --app-footer-bg: #161630;
+  --auth-gradient-start: #1a1a2e;
+  --auth-gradient-end: #2d1b69;
+}
+
+html:not(.dark) {
+  --app-bg: #f5f7fa;
+  --app-text: #303133;
+  --app-text-secondary: #606266;
+  --app-card-bg: #ffffff;
+  --app-header-bg: #ffffff;
+  --app-border: #e4e7ed;
+  --app-footer-bg: #f5f7fa;
+  --auth-gradient-start: #667eea;
+  --auth-gradient-end: #764ba2;
+}

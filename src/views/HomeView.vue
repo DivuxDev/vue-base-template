@@ -7,23 +7,22 @@
           <div class="hero-icon">⚡</div>
           <h1 class="hero-title">Vue 3 + Laravel Starter</h1>
           <p class="hero-subtitle">
-            Proyecto base listo para conectarse con un backend Laravel con autenticación
-            Sanctum/JWT y OAuth Google.
+            {{ t('home.subtitle') }}
           </p>
 
           <div class="hero-actions">
             <template v-if="authStore.isAuthenticated">
               <el-button type="primary" size="large" @click="router.push({ name: 'Profile' })">
                 <el-icon><UserFilled /></el-icon>
-                Ver mi perfil
+                {{ t('home.viewProfile') }}
               </el-button>
             </template>
             <template v-else>
               <el-button type="primary" size="large" @click="router.push({ name: 'Login' })">
-                Iniciar sesión
+                {{ t('auth.login') }}
               </el-button>
               <el-button size="large" @click="router.push({ name: 'Register' })">
-                Crear cuenta
+                {{ t('auth.register') }}
               </el-button>
             </template>
           </div>
@@ -44,8 +43,8 @@
     <!-- Features -->
     <el-row justify="center" class="features-section">
       <el-col :xs="24" :md="20">
-        <h2 class="section-title">¿Qué incluye este starter?</h2>
-        <el-row :gutter="20">
+        <h2 class="section-title">{{ t('home.featuresTitle') }}</h2>
+        <el-row :gutter="20" justify="center">
           <el-col v-for="f in features" :key="f.title" :xs="24" :sm="12" :md="8">
             <el-card class="feature-card" shadow="never">
               <el-icon class="feature-icon" :size="28">
@@ -64,10 +63,13 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import NotificationToast from '@/components/NotificationToast.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -82,38 +84,17 @@ const stackItems = [
   { icon: '🐘', title: 'Laravel API' },
 ]
 
-const features = [
-  {
-    icon: 'Lock',
-    title: 'Autenticación completa',
-    description: 'Login, register, logout con tokens Bearer. Compatible con Sanctum y JWT.',
-  },
-  {
-    icon: 'ChromeFilled',
-    title: 'OAuth Google',
-    description: 'Flujo de login con Google mediante redirección al backend Laravel.',
-  },
-  {
-    icon: 'Cpu',
-    title: 'Pinia Store',
-    description: 'Estado global del usuario con persistencia en localStorage.',
-  },
-  {
-    icon: 'MapLocation',
-    title: 'Route Guards',
-    description: 'Protección de rutas. Las páginas privadas redirigen al login automáticamente.',
-  },
-  {
-    icon: 'Connection',
-    title: 'Axios configurado',
-    description: 'Interceptores para token Bearer y manejo automático de errores 401.',
-  },
-  {
-    icon: 'MagicStick',
-    title: 'UI lista',
-    description: 'Layouts, navbar responsiva y formularios con validación usando Element Plus.',
-  },
-]
+const features = computed(() => [
+  { icon: 'Lock', title: t('home.featureAuth'), description: t('home.featureAuthDesc') },
+  { icon: 'ChromeFilled', title: t('home.featureGoogle'), description: t('home.featureGoogleDesc') },
+  { icon: 'Moon', title: t('home.featureDarkMode'), description: t('home.featureDarkModeDesc') },
+  { icon: 'MapLocation', title: t('home.featureGuards'), description: t('home.featureGuardsDesc') },
+  { icon: 'EditPen', title: t('home.featureProfile'), description: t('home.featureProfileDesc') },
+  { icon: 'Memo', title: t('home.featureAudit'), description: t('home.featureAuditDesc') },
+  { icon: 'Grid', title: t('home.featurePagination'), description: t('home.featurePaginationDesc') },
+  { icon: 'Connection', title: t('home.featureI18n'), description: t('home.featureI18nDesc') },
+  { icon: 'Shield', title: t('home.featureSecurity'), description: t('home.featureSecurityDesc') },
+])
 </script>
 
 <style scoped>
@@ -135,12 +116,12 @@ const features = [
   font-size: 2.4rem;
   font-weight: 800;
   margin: 0 0 12px;
-  color: #303133;
+  color: var(--app-text);
 }
 
 .hero-subtitle {
   font-size: 1.1rem;
-  color: #606266;
+  color: var(--app-text-secondary);
   max-width: 540px;
   margin: 0 auto 28px;
   line-height: 1.6;
@@ -170,7 +151,7 @@ const features = [
 .stack-label {
   font-size: 13px;
   font-weight: 600;
-  color: #606266;
+  color: var(--app-text-secondary);
 }
 
 .features-section {
@@ -180,7 +161,7 @@ const features = [
 .section-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #303133;
+  color: var(--app-text);
   margin-bottom: 20px;
   text-align: center;
 }
@@ -199,13 +180,13 @@ const features = [
 .feature-card h3 {
   margin: 0 0 8px;
   font-size: 1rem;
-  color: #303133;
+  color: var(--app-text);
 }
 
 .feature-card p {
   margin: 0;
   font-size: 0.9rem;
-  color: #606266;
+  color: var(--app-text-secondary);
   line-height: 1.5;
 }
 </style>
