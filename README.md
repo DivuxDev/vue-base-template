@@ -3,6 +3,8 @@
 SPA frontend built with **Vue 3 + Vite + TypeScript + Element Plus**, preconfigured to connect to the [laravel-base](../laravel-base) backend via **Sanctum Bearer token** auth, **Google OAuth**, and **Laravel Reverb** WebSockets.
 
 ---
+<img width="2549" height="1274" alt="image" src="https://github.com/user-attachments/assets/926bc610-9019-4210-a6e2-50167be958db" />
+
 
 ## Stack
 
